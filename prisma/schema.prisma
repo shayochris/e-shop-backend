@@ -12,3 +12,23 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
+enum Roles {
+  CUSTOMER
+  ADMIN
+}
+
+model User {
+  id         Int      @id @default(autoincrement())
+  first_name String   @db.VarChar(200)
+  last_name  String   @db.VarChar(200)
+  email      String   @unique @db.VarChar(200)
+  password   String   @db.VarChar(60)
+  role       Roles    @default(CUSTOMER)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@index(id)
+  @@index(email)
+  @@map("users")
+}
