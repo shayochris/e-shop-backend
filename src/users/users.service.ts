@@ -9,34 +9,35 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { UpdateUserDto } from './dto/update-user.dto';
 import * as bcrypt from 'bcrypt';
 import { ChangePasswordDto } from './dto/chenge-password-dto';
+import {
+  selectUser,
+  selectUserWithPassword,
+  SuccessResponse,
+  User,
+  UserWithPassword,
+} from './types/user';
 
 @Injectable()
 export class UsersService {
   constructor(private prisma: PrismaService) {}
 
-  async create(createUserDto: CreateUserDto) {
-    const { password, email } = createUserDto;
+  async create(payload: CreateUserDto): Promise<User> {
+    const { password, email } = payload;
     await this.validateUserEmail(email);
     try {
-      await this.prisma.user.create({
-        data: { ...createUserDto, password: await bcrypt.hash(password, 10) },
+      const user = await this.prisma.user.create({
+        data: { ...payload, password: await bcrypt.hash(password, 10) },
       });
-      return { success: true, message: 'user created successfully' };
+      return user;
     } catch (error) {
       throw error;
     }
   }
 
-  async findAll() {
+  async findAll(): Promise<User[]> {
     try {
       return this.prisma.user.findMany({
-        select: {
-          first_name: true,
-          last_name: true,
-          email: true,
-          role: true,
-          created_at: true,
-        },
+        select: { ...selectUser },
       });
     } catch (error) {
       throw error;
@@ -44,17 +45,11 @@ export class UsersService {
   }
 
   // returns user without password
-  async findOne(id: number) {
+  async findOne(id: number): Promise<User> {
     try {
       const user = await this.prisma.user.findFirst({
         where: { id },
-        select: {
-          first_name: true,
-          last_name: true,
-          email: true,
-          role: true,
-          created_at: true,
-        },
+        select: { ...selectUserWithPassword },
       });
       if (!user) throw new NotFoundException('User not found');
       return user;
@@ -64,10 +59,11 @@ export class UsersService {
   }
 
   // returns user with password
-  async findUser(id: number) {
+  async findUser(id: number): Promise<UserWithPassword> {
     try {
       const user = await this.prisma.user.findFirst({
         where: { id },
+        select: { ...selectUserWithPassword },
       });
       if (!user) throw new NotFoundException('User not found');
       return user;
@@ -76,13 +72,24 @@ export class UsersService {
     }
   }
 
-  async update(id: number, updateUserDto: UpdateUserDto) {
+  async findByEmail(email: string): Promise<UserWithPassword> {
+    try {
+      return this.prisma.user.findFirst({
+        where: { email },
+        select: { ...selectUserWithPassword },
+      });
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async update(id: number, payload: UpdateUserDto): Promise<SuccessResponse> {
     await this.findOne(id);
-    await this.validateUserEmail(updateUserDto.email, id);
+    await this.validateUserEmail(payload.email, id);
     try {
       await this.prisma.user.update({
         where: { id },
-        data: { ...updateUserDto },
+        data: { ...payload },
       });
       return { success: true, message: 'user updated successfully' };
     } catch (error) {
@@ -90,8 +97,11 @@ export class UsersService {
     }
   }
 
-  async changePassword(id: number, changePasswordDto: ChangePasswordDto) {
-    const { old_password, new_password } = changePasswordDto;
+  async changePassword(
+    id: number,
+    payload: ChangePasswordDto,
+  ): Promise<SuccessResponse> {
+    const { old_password, new_password } = payload;
 
     const user = await this.findUser(id);
 
@@ -110,7 +120,7 @@ export class UsersService {
     }
   }
 
-  async remove(id: number) {
+  async remove(id: number): Promise<SuccessResponse> {
     await this.findOne(id);
     try {
       await this.prisma.user.delete({ where: { id } });
