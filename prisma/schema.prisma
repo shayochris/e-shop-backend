@@ -32,3 +32,15 @@ model User {
   @@index(email)
   @@map("users")
 }
+
+model ProductCategory {
+  id          Int      @id @default(autoincrement())
+  name        String
+  description String?
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  @@index(id)
+  @@index(name)
+  @@map("products_categories")
+}
